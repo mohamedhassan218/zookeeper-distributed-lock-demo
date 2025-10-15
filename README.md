@@ -5,7 +5,7 @@ In distributed systems, multiple services may attempt to modify shared data at t
 
 Each API replica connects to ZooKeeper, attempts to acquire a lock, writes to a shared file, and then releases the lock so the next replica can proceed.
 
-I've made this repo to get my hands-on the practical details after I've written this [article]().
+I've made this repo to get my hands-on the practical details after I've written this [article](https://medium.com/@m.hassan.def/distributed-locking-using-zookeeper-e6ec7d84feb3).
 
 
 ## Running the Demo
