@@ -26,16 +26,18 @@ I've made this repo to get my hands-on the practical details after I've written 
 
 4. Test the code by sending three requests to the three replicas and see the results:
    ```bash
-   // UNDER_SEARCHING
+   node script.js
    ```
 
 ## The Expected Behavior
 
 Only one replica at a time acquires the lock and writes to the shared file and other replicas wait until the lock becomes available.
 Logs clearly show the order in which replicas acquired and released the lock.
-We predict a result like:
+You can check the `shared.txt` file in the project directory. We predict a result like:
 ```text
-Replica 1 sends their regards.
-Replica 2 sends their regards.
-Replica 3 sends their regards.
+Replica a3916c28766e sent their regards at 10/17/2025, 12:44:08.
+Replica 9987420ebfd7 sent their regards at 10/17/2025, 12:44:10.
+Replica 3df6ade40a74 sent their regards at 10/17/2025, 12:44:12.
 ```
+
+**Important Note: you must create your `shared.txt` file before build-up your docker-compose file.**
