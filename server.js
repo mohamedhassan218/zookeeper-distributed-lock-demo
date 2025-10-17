@@ -1,70 +1,67 @@
-const fs = require("fs");
-const zookeeper = require("node-zookeeper-client");
-const DistributedLock = require("./lock");
-const express = require('express');
+/**
+ * Main server entry point for distributed lock demo
+ * @module server
+ */
 
-// To extract replica ID
+const express = require('express');
 const os = require("os");
 
-const REPLICA_ID = getReplicaId();
-const PORT = 3000 + parseInt(REPLICA_ID);
-const LOCK_PATH = "/locks";
-const ZK_HOST = process.env.ZK_HOST || "zookeeper:2181";
+// Import modules
+const { PORT } = require("./config/constants");
+const { createZooKeeperClient } = require("./zookeeper/client");
+const { ensureLockPath } = require("./zookeeper/lock-manager");
+const { createWriteHandler } = require("./routes/write");
+const { spinForSeconds } = require("./utils/helpers");
 
-const client = zookeeper.createClient(ZK_HOST);
+/**
+ * =============================
+ * Application Initialization
+ * =============================
+ */
+
+// Initialize Express application
 const app = express();
 
+// Create ZooKeeper client
+const client = createZooKeeperClient();
+
+/**
+ * =============================
+ * ZooKeeper Connection Setup
+ * =============================
+ */
+
+/**
+ * Event listener that runs once the ZooKeeper connection is established.
+ * It ensures the existence of the lock path before starting the API server.
+ */
 client.once("connected", async () =>
 {
-    console.log(`[Replica ${REPLICA_ID}] Connected to ZooKeeper`);
-    ensureLockPath(() =>
-    {
-        app.listen(PORT, () => console.log(`Replica ${REPLICA_ID} running on port ${PORT}`));
-    });
-});
+    console.log(`[Replica ${os.hostname()}] Connected to ZooKeeper`);
 
-client.connect();
-
-function ensureLockPath(callback)
-{
-    client.exists(LOCK_PATH, (err, stat) =>
+    ensureLockPath(client, () =>
     {
-        if (stat) return callback();
-        client.create(LOCK_PATH, (err2) =>
+        // Setup routes
+        app.post("/write", createWriteHandler(client));
+
+        // Start server
+        app.listen(PORT, () =>
         {
-            if (!err2 || err2.getCode() === zookeeper.Exception.NODE_EXISTS) callback();
-            else console.error("Failed to ensure lock path:", err2);
+            console.log(`Replica ${os.hostname()} running on port ${PORT}`);
         });
     });
-}
-
-app.post("/write", async (req, res) =>
-{
-    const lock = new DistributedLock(client, LOCK_PATH);
-    try
-    {
-        await lock.acquireLock();
-
-        fs.appendFileSync("shared.txt", `Replica ${REPLICA_ID} sends their regards.\n`);
-        console.log(`[Replica ${REPLICA_ID}] Wrote to file.`);
-
-        await lock.releaseLock();
-        res.send(`Replica ${REPLICA_ID} write complete.`);
-    } catch (err)
-    {
-        console.error(err);
-        res.status(500).send("Error acquiring lock.");
-    }
 });
 
+/**
+ * =============================
+ * Server Startup
+ * =============================
+ */
 
-function getReplicaId()
-{
-    // Example: hostname() returns "zookeeper-lock-demo-replica-1"
-    const hostname = os.hostname();
-
-    // Try to extract the trailing number
-    const match = hostname.match(/(\d+)$/);
-    const REPLICA_ID = match ? parseInt(match[1]) : 1;
-    return REPLICA_ID;
-}
+/**
+ * Spin for four seconds until ZooKeeper instance finishes booting up.
+ * If you don't spin here, the replicas try to connect once they up before ZooKeeper
+ * server finishes initialization which causes error: java.io.IOException: ZooKeeperServer not running.
+ */
+spinForSeconds(4);
+client.connect();

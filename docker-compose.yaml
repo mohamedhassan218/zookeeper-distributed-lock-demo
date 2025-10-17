@@ -1,4 +1,3 @@
-# docker-compose.yaml (fixed)
 services:
   zookeeper:
     image: zookeeper:3.9
@@ -8,36 +7,39 @@ services:
 
   replica-1:
     build: .
-    container_name: zookeeper-distributed-lock-demo-api-replica-1
+    container_name: api-replica-1
     depends_on:
       - zookeeper
     environment:
       - ZK_HOST=zookeeper:2181
+      - PORT=3000
     volumes:
       - ./shared.txt:/app/shared.txt
     ports:
-      - "3001:3000"
+      - "3000:3000"
 
   replica-2:
     build: .
-    container_name: zookeeper-distributed-lock-demo-api-replica-2
+    container_name: api-replica-2
     depends_on:
       - zookeeper
     environment:
       - ZK_HOST=zookeeper:2181
+      - PORT=3001
     volumes:
       - ./shared.txt:/app/shared.txt
     ports:
-      - "3002:3000"
+      - "3001:3001"
 
   replica-3:
     build: .
-    container_name: zookeeper-distributed-lock-demo-api-replica-3
+    container_name: api-replica-3
     depends_on:
       - zookeeper
     environment:
       - ZK_HOST=zookeeper:2181
+      - PORT=3002
     volumes:
       - ./shared.txt:/app/shared.txt
     ports:
-      - "3003:3000"
+      - "3002:3002"
